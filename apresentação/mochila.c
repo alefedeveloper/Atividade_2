@@ -1,68 +1,67 @@
 #include <stdio.h>
-#include <limits.h>
 #include <time.h>
 
-#define N 8
+long long chamadas = 0;
 
-long long permutacoes = 0;
-
-int min(int a, int b){
-    return (a < b) ? a : b;
+int max(int a, int b){
+    return (a > b) ? a : b;
 }
 
-void swap(int *a, int *b){
-    int temp = *a;
-    *a = *b;
-    *b = temp;
+// Força Bruta (Exponencial)
+int knapsack_rec(int n, int W, int peso[], int valor[]){
+    chamadas++;
+    if(n == 0 || W == 0)
+        return 0;
+
+    if(peso[n-1] > W)
+        return knapsack_rec(n-1, W, peso, valor);
+
+    return max(
+        valor[n-1] + knapsack_rec(n-1, W - peso[n-1], peso, valor),
+        knapsack_rec(n-1, W, peso, valor)
+    );
 }
 
-int calcular_custo(int grafo[N][N], int caminho[]){
-    int custo = 0;
-    for(int i=0;i<N-1;i++)
-        custo += grafo[caminho[i]][caminho[i+1]];
-    custo += grafo[caminho[N-1]][caminho[0]];
-    return custo;
-}
+// Programação Dinâmica
+int knapsack_dp(int n, int W, int peso[], int valor[]){
+    int dp[n+1][W+1];
 
-void permutar(int grafo[N][N], int caminho[], int inicio, int fim, int *min_custo){
-    if(inicio == fim){
-        permutacoes++;
-        int custo = calcular_custo(grafo, caminho);
-        *min_custo = min(*min_custo, custo);
-        return;
+    for(int i=0;i<=n;i++){
+        for(int w=0;w<=W;w++){
+            if(i==0 || w==0)
+                dp[i][w] = 0;
+            else if(peso[i-1] <= w)
+                dp[i][w] = max(valor[i-1] + dp[i-1][w-peso[i-1]], dp[i-1][w]);
+            else
+                dp[i][w] = dp[i-1][w];
+        }
     }
-
-    for(int i=inicio;i<=fim;i++){
-        swap(&caminho[inicio], &caminho[i]);
-        permutar(grafo, caminho, inicio+1, fim, min_custo);
-        swap(&caminho[inicio], &caminho[i]);
-    }
+    return dp[n][W];
 }
 
 int main(){
 
-    int grafo[N][N] = {0};
-    for(int i=0;i<N;i++)
-        for(int j=0;j<N;j++)
-            if(i!=j)
-                grafo[i][j] = (i+j)%10 + 1;
+    int peso[] = {2,3,4,5,9,7,3,6,4,8};
+    int valor[] = {3,4,8,8,10,7,4,5,3,9};
+    int n = 10;
+    int W = 20;
 
-    int caminho[N];
-    for(int i=0;i<N;i++)
-        caminho[i] = i;
+    // Força Bruta
+    chamadas = 0;
+    clock_t inicio1 = clock();
+    int r1 = knapsack_rec(n, W, peso, valor);
+    clock_t fim1 = clock();
+    double tempo1 = (double)(fim1 - inicio1)/CLOCKS_PER_SEC;
 
-    int min_custo = INT_MAX;
+    // DP
+    clock_t inicio2 = clock();
+    int r2 = knapsack_dp(n, W, peso, valor);
+    clock_t fim2 = clock();
+    double tempo2 = (double)(fim2 - inicio2)/CLOCKS_PER_SEC;
 
-    clock_t inicio = clock();
-    permutar(grafo, caminho, 0, N-1, &min_custo);
-    clock_t fim = clock();
-
-    double tempo = (double)(fim - inicio)/CLOCKS_PER_SEC;
-
-    printf("Cidades: %d\n", N);
-    printf("Permutacoes: %lld\n", permutacoes);
-    printf("Tempo: %.6f s\n", tempo);
-    printf("Custo minimo: %d\n", min_custo);
+    printf("Itens: %d\n", n);
+    printf("Forca Bruta -> Resultado: %d | Chamadas: %lld | Tempo: %.6f s\n", r1, chamadas, tempo1);
+    printf("DP          -> Resultado: %d | Tempo: %.6f s\n", r2, tempo2);
 
     return 0;
 }
